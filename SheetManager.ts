@@ -53,13 +53,6 @@ class SheetManager {
    * This is an async function since it needs to initialize the authentication.
    * @param credentials The credentials used to authenticate with Google APIs.
    * @returns An instance of SheetManager.
-   *
-   * @example
-   * const credentials = {
-   *   client_email: "your-client-email",
-   *   private_key: "your-private-key",
-   * };
-   * const sheetManager = await SheetManager.getInstance(credentials);
    */
   public static async getInstance(credentials: any): Promise<SheetManager> {
     const sheetManager = new SheetManager(credentials);
@@ -80,9 +73,6 @@ class SheetManager {
    * If the `auth` property is already set, this method does nothing.
    * @returns The authentication instance.
    * @throws An error if the authentication instance cannot be obtained.
-   *
-   * @example
-   * await sheetManager.getAuth();
    */
   public async getAuth(): Promise<
     Compute | Impersonated | JWT | UserRefreshClient | BaseExternalAccountClient
@@ -104,11 +94,6 @@ class SheetManager {
    * Gets information about a specific Google Sheets spreadsheet.
    * @param id The ID of the spreadsheet.
    * @returns A Promise resolving to the spreadsheet information.
-   *
-   * @example
-   * const sheetId = "your-spreadsheet-id";
-   * const spreadsheetInfo = await sheetManager.getSheetInfo(sheetId);
-   * console.log(spreadsheetInfo);
    */
   public async getSheetInfo(
     id: string
@@ -124,12 +109,6 @@ class SheetManager {
    * @param id The ID of the spreadsheet.
    * @param sheetIndex The index of the sheet in the spreadsheet (0-based).
    * @returns A Promise resolving to the values from the sheet.
-   *
-   * @example
-   * const sheetId = "your-spreadsheet-id";
-   * const sheetIndex = 0; // Assuming you want the first sheet (0-based index)
-   * const sheetValues = await sheetManager.getSheetValues(sheetId, sheetIndex);
-   * console.log(sheetValues);
    */
   public async getSheetValues(
     id: string,
@@ -139,6 +118,7 @@ class SheetManager {
     const res = await this.sheetClient?.spreadsheets.values.get({
       spreadsheetId: id,
       range: `${sheetName}!A1:Z`,
+      valueRenderOption: "UNFORMATTED_VALUE",
     });
     return res?.data;
   }
@@ -148,12 +128,6 @@ class SheetManager {
    * @param id The ID of the spreadsheet.
    * @param sheetIndex The index of the sheet in the spreadsheet (0-based).
    * @returns A Promise resolving to the name of the sheet.
-   *
-   * @example
-   * const sheetId = "your-spreadsheet-id";
-   * const sheetIndex = 0; // Assuming you want the first sheet (0-based index)
-   * const sheetName = await sheetManager.getSheetnameByIndex(sheetId, sheetIndex);
-   * console.log(sheetName);
    */
   public async getSheetnameByIndex(
     id: string,
@@ -172,14 +146,6 @@ class SheetManager {
    * @param col The column to filter on.
    * @param filter The value to filter by in the specified column.
    * @returns A Promise resolving to the values of the row that matches the filter.
-   *
-   * @example
-   * const sheetId = "your-spreadsheet-id";
-   * const sheetIndex = 0; // Assuming you want the first sheet (0-based index)
-   * const columnToFilter = "Column A";
-   * const filterValue = "Filter Value";
-   * const filteredRow = await sheetManager.getSheetValuesByFilter(sheetId, sheetIndex, columnToFilter, filterValue);
-   * console.log(filteredRow);
    */
   public async getSheetValuesByFilter(
     id: string,
@@ -194,6 +160,7 @@ class SheetManager {
     const colRes = await this.sheetClient?.spreadsheets.values.get({
       spreadsheetId: id,
       range: `${sheetName}!${col}:${col}`,
+      valueRenderOption: "UNFORMATTED_VALUE",
     });
     const colValues = colRes?.data.values;
 
@@ -216,12 +183,6 @@ class SheetManager {
    * @param id The ID of the spreadsheet.
    * @param sheetIndex The index of the sheet in the spreadsheet (0-based).
    * @returns A Promise resolving to the headers of the sheet.
-   *
-   * @example
-   * const sheetId = "your-spreadsheet-id";
-   * const sheetIndex = 0; // Assuming you want the first sheet (0-based index)
-   * const headers = await sheetManager.getSheetHeaders(sheetId, sheetIndex);
-   * console.log(headers);
    */
   public async getSheetHeaders(
     id: string,
@@ -242,11 +203,6 @@ class SheetManager {
    * @param id The ID of the spreadsheet.
    * @param sheetName The name of the new sheet to add.
    * @returns A Promise resolving when the new sheet is added.
-   *
-   * @example
-   * const sheetId = "your-spreadsheet-id";
-   * const newSheetName = "New Sheet";
-   * await sheetManager.addSheets(sheetId, newSheetName);
    */
   private async addSheets(id: string, sheetName: string): Promise<void> {
     const resp = await this.sheetClient?.spreadsheets.get({
@@ -280,28 +236,6 @@ class SheetManager {
    * @param id The ID of the spreadsheet.
    * @param values An array of objects containing the sheet name, headers, and rows to add.
    * @returns A Promise resolving when the values are added.
-   *
-   * @example
-   * const sheetId = "your-spreadsheet-id";
-   * const values = [
-   *   {
-   *     sheetName: "Sheet1",
-   *     headers: ["Name", "Age", "Email"],
-   *     rows: [
-   *       ["John Doe", 30, "john@example.com"],
-   *       ["Jane Smith", 25, "jane@example.com"],
-   *     ],
-   *   },
-   *   {
-   *     sheetName: "Sheet2",
-   *     headers: ["Product", "Price", "Quantity"],
-   *     rows: [
-   *       ["Product A", 10.99, 50],
-   *       ["Product B", 19.99, 30],
-   *     ],
-   *   },
-   * ];
-   * await sheetManager.addSheetValues(sheetId, values);
    */
   public async addSheetValues(
     id: string,
@@ -314,12 +248,120 @@ class SheetManager {
     await Promise.all(
       values.map(async (value) => {
         await this.addSheets(id, value.sheetName);
+
+        // Calculate the dimensions of the new data
+        const numRows = value.rows.length;
+        const numColumns = value.headers.length;
+
+        // Get the existing sheet properties
+        const sheetProperties = await this.sheetClient?.spreadsheets.get({
+          spreadsheetId: id,
+          ranges: [`${value.sheetName}!A1`],
+          fields: "sheets(properties)",
+        });
+        const sheets = sheetProperties?.data.sheets;
+        if (!sheets) throw new Error("Sheets is undefined");
+        const sheetindex = sheets.findIndex((sheet) => {
+          return sheet.properties?.title === value.sheetName;
+        });
+        if (sheetindex === -1) throw new Error("Sheet index is -1");
+        const sheetId = sheets[sheetindex].properties?.sheetId;
+        if (!sheetId) throw new Error("Sheet ID is undefined");
+
+        // Get the existing grid properties
+        const gridProperties =
+          sheetProperties?.data.sheets?.[sheetindex]?.properties
+            ?.gridProperties;
+
+        if (!gridProperties) {
+          throw new Error("Failed to get grid properties");
+        }
+
+        // Update the grid properties to match the new dimensions
+        gridProperties.rowCount = Math.max(
+          gridProperties.rowCount || 0,
+          numRows + 1 // Add 1 to account for the header row
+        );
+        gridProperties.columnCount = Math.max(
+          gridProperties.columnCount || 0,
+          numColumns
+        );
+
+        // Update the sheet properties with the new grid properties
+        await this.sheetClient?.spreadsheets.batchUpdate({
+          spreadsheetId: id,
+          requestBody: {
+            requests: [
+              {
+                updateSheetProperties: {
+                  properties: {
+                    title: value.sheetName,
+                    sheetId: sheetId,
+                    gridProperties: {
+                      ...gridProperties,
+                      rowCount: value.rows.length + 1,
+                      columnCount: value.headers.length,
+                    },
+                  },
+                  fields: "gridProperties",
+                },
+              },
+            ],
+          },
+        });
+
+        // Create data validation requests based on the header row
+        const requests = value.headers.map((header, index) => {
+          const dataType = typeof value.rows[0][index];
+          const rule: any = {
+            condition: {
+              type: "CUSTOM_FORMULA",
+            },
+            showCustomUi: true,
+          };
+
+          let validationFormula: string;
+          const columnLetter = String.fromCharCode(65 + index);
+          if (dataType === "string") {
+            validationFormula = `=ISTEXT(${columnLetter}2:${columnLetter})`;
+          } else if (dataType === "number") {
+            validationFormula = `=ISNUMBER(${columnLetter}2:${columnLetter})`;
+          } else if (dataType === "boolean") {
+            validationFormula = `=OR(${columnLetter}2:${columnLetter}=TRUE, ${columnLetter}2:${columnLetter}=FALSE)`;
+          } else {
+            validationFormula = "";
+          }
+
+          if (validationFormula) {
+            rule.condition.values = [{ userEnteredValue: validationFormula }];
+          }
+          return {
+            setDataValidation: {
+              range: {
+                sheetId: sheetId,
+                startRowIndex: 1,
+                endRowIndex: numRows + 1,
+                startColumnIndex: index,
+                endColumnIndex: index + 1,
+              },
+              rule: rule,
+            },
+          };
+        });
+
+        // Append the values to the sheet
         await this.sheetClient?.spreadsheets.values.append({
           spreadsheetId: id,
           range: `${value.sheetName}!A1:Z`,
           valueInputOption: "RAW",
           requestBody: {
             values: [value.headers, ...value.rows],
+          },
+        });
+        await this.sheetClient?.spreadsheets.batchUpdate({
+          spreadsheetId: id,
+          requestBody: {
+            requests: requests,
           },
         });
       })
@@ -332,23 +374,6 @@ class SheetManager {
    * @param permissions An array of permission objects to apply to the document.
    * @returns A Promise resolving to the created document information.
    * @throws An error if the document ID is undefined.
-   *
-   * @example
-   * const newSheetTitle = "New Spreadsheet";
-   * const permissions = [
-   *   {
-   *     role: "writer",
-   *     type: "user",
-   *     emailAddress: "user@example.com",
-   *   },
-   *   {
-   *     role: "reader",
-   *     type: "domain",
-   *     domain: "example.com",
-   *   },
-   * ];
-   * const newDocument = await sheetManager.createNewDocument(newSheetTitle, permissions);
-   * console.log(newDocument);
    */
   public async createNewDocument(
     title: string,
@@ -373,6 +398,12 @@ class SheetManager {
     );
     return newSheetDocument?.data;
   }
+
+  /**
+   * Gets the URL of a specific Google Sheets spreadsheet.
+   * @param id The ID of the spreadsheet.
+   * @returns A Promise resolving to the URL of the spreadsheet.
+   */
   public async getSheetURL(id: string): Promise<string | undefined | null> {
     const sheetInfo = await this.sheetClient?.spreadsheets.get({
       spreadsheetId: id,

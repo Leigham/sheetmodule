@@ -9,7 +9,12 @@ async function main() {
       {
         role: "writer",
         type: "user",
-        emailAddress: "email@email.com",
+        emailAddress: "itsleigham@gmail.com",
+      },
+      {
+        role: "writer",
+        type: "user",
+        emailAddress: "skylerminer1234@gmail.com",
       },
     ]);
     if (!doc.id) throw new Error("No document ID");
@@ -23,14 +28,15 @@ async function main() {
         sheetName: "New Sheet",
         headers: ["test", "test", "test"],
         rows: [
-          ["test", "test", "test"],
-          ["test", "test", "test"],
-          ["test", "test", "test"],
+          ["test1", 1, true],
+          ["test2", 1, true],
+          ["test3", 1, true],
         ],
       },
     ]);
     const sheetInfo = await sheetManager.getSheetInfo(doc.id);
     const values = await sheetManager.getSheetValues(doc.id, 1);
+
     const headers = await sheetManager.getSheetHeaders(doc.id, 1);
     const filtered = await sheetManager.getSheetValuesByFilter(
       doc.id,
@@ -43,6 +49,3 @@ async function main() {
   }
 }
 main();
-
-/*
-    console.log(`insert`, insert);*/
