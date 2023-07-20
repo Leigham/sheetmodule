@@ -5,18 +5,7 @@ async function main() {
     const sheetManager = await SheetManager.getInstance(
       JSON.parse(fs.readFileSync("./credentials.json").toString())
     );
-    const doc = await sheetManager.createNewDocument("test", [
-      {
-        role: "writer",
-        type: "user",
-        emailAddress: "itsleigham@gmail.com",
-      },
-      {
-        role: "writer",
-        type: "user",
-        emailAddress: "skylerminer1234@gmail.com",
-      },
-    ]);
+    const doc = await sheetManager.createNewDocument("test", []);
     if (!doc.id) throw new Error("No document ID");
     console.log(
       `Created document with ID ${
